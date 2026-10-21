@@ -751,6 +751,11 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             registerReceiver(bluetoothReceiver, serviceIntentFilter)
         }
 
+        val hotwordIntentFilter = IntentFilter(BluetoothHeadset.ACTION_VENDOR_SPECIFIC_HEADSET_EVENT).apply {
+            addCategory("${BluetoothHeadset.VENDOR_SPECIFIC_HEADSET_EVENT_COMPANY_ID_CATEGORY}.$APPLE")
+        }
+        registerReceiver(hotwordReceiver, hotwordIntentFilter, RECEIVER_EXPORTED)
+
         val bluetoothAdapter = getSystemService(BluetoothManager::class.java).adapter
 
         bluetoothAdapter.bondedDevices.forEach { device ->
@@ -1183,6 +1188,45 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 )
             }
         })
+    }
+
+    /**
+     * Receives vendor-specific headset AT events from the Bluetooth stack. When AirPods report
+     * a "Hey Siri" trigger (+APLSIRI), start the digital assistant, unless the user has turned
+     * background Hey Siri detection off in Microphone Mode settings.
+     *
+     * The event format is not yet confirmed on a real device: every vendor event is logged so
+     * the actual traffic can be checked against VENDOR_SPECIFIC_HEADSET_EVENT_APLSIRI.
+     */
+    private val hotwordReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent == null) return
+            val cmd = intent.getStringExtra(BluetoothHeadset.EXTRA_VENDOR_SPECIFIC_HEADSET_EVENT_CMD)
+            val cmdType = intent.getIntExtra(BluetoothHeadset.EXTRA_VENDOR_SPECIFIC_HEADSET_EVENT_CMD_TYPE, -1)
+            val args = intent.getSerializableExtra(BluetoothHeadset.EXTRA_VENDOR_SPECIFIC_HEADSET_EVENT_ARGS)
+            Log.d(TAG, "Vendor headset event: cmd=$cmd type=$cmdType args=$args")
+
+            if (cmd != VENDOR_SPECIFIC_HEADSET_EVENT_APLSIRI) return
+
+            if (!isHeySiriDetectionEnabled()) {
+                Log.d(TAG, "Hey Siri trigger received but background detection is off; ignoring")
+                return
+            }
+
+            Log.d(TAG, "Hey Siri trigger received; starting digital assistant")
+            executeStemAction(StemAction.DIGITAL_ASSISTANT)
+        }
+    }
+
+    /**
+     * Reads the last VOICE_TRIGGER value reported by (or sent to) the buds.
+     * Treats an unknown value as enabled, matching the default on the buds.
+     */
+    private fun isHeySiriDetectionEnabled(): Boolean {
+        val status = aacpManager.getControlCommandStatus(
+            AACPManager.Companion.ControlCommandIdentifiers.VOICE_TRIGGER
+        )
+        return status?.value?.getOrNull(0) != 0x02.toByte()
     }
 
     private fun getActionFor(
@@ -2228,6 +2272,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     private val APPLE = 0x004C
 
     @Suppress("PrivatePropertyName")
+    private val VENDOR_SPECIFIC_HEADSET_EVENT_APLSIRI = "+APLSIRI"
+
+    @Suppress("PrivatePropertyName")
     private val ACTION_BATTERY_LEVEL_CHANGED =
         "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED"
 
@@ -3109,6 +3156,11 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
         try {
             unregisterReceiver(bluetoothReceiver)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            unregisterReceiver(hotwordReceiver)
         } catch (e: Exception) {
             e.printStackTrace()
         }

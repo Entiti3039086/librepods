@@ -92,6 +92,8 @@
     <string name="microphone">Microphone</string>
     <string name="microphone_mode">Microphone Mode</string>
     <string name="microphone_automatic">Automatic</string>
+    <string name="hey_siri_detection">Hey Siri detection</string>
+    <string name="hey_siri_detection_description">Start your digital assistant when AirPods hear \"Hey Siri\"</string>
     <string name="microphone_always_right">Always Right</string>
     <string name="microphone_always_left">Always Left</string>
     <string name="answer_call">Answer call</string>

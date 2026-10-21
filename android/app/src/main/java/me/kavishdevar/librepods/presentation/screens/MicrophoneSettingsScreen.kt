@@ -25,6 +25,7 @@ import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.bluetooth.AACPManager
 import me.kavishdevar.librepods.presentation.components.StyledList
 import me.kavishdevar.librepods.presentation.components.StyledListItem
+import me.kavishdevar.librepods.presentation.components.StyledToggle
 import me.kavishdevar.librepods.presentation.theme.DesignSystem
 import me.kavishdevar.librepods.presentation.theme.LocalDesignSystem
 import me.kavishdevar.librepods.presentation.viewmodel.AirPodsViewModel
@@ -46,12 +47,18 @@ fun MicrophoneSettingsRoute(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
+        val voiceTriggerId = AACPManager.Companion.ControlCommandIdentifiers.VOICE_TRIGGER
+
         MicrophoneSettingsScreen(
             selectedMode = state.controlStates[id]?.getOrNull(0)?.toInt() ?: 0,
+            heySiriDetectionEnabled = state.controlStates[voiceTriggerId]?.getOrNull(0) != 0x02.toByte(),
             topPadding = topPadding,
             bottomPadding = bottomPadding,
             onMicrophoneSettingsChanged = {
                 viewModel.setControlCommandInt(id, it)
+            },
+            onHeySiriDetectionChanged = {
+                viewModel.setControlCommandBoolean(voiceTriggerId, it)
             }
         )
     }
@@ -60,9 +67,11 @@ fun MicrophoneSettingsRoute(
 @Composable
 fun MicrophoneSettingsScreen(
     selectedMode: Int,
+    heySiriDetectionEnabled: Boolean = true,
     topPadding: Dp = 16.dp,
     bottomPadding: Dp = 16.dp,
-    onMicrophoneSettingsChanged: (Int) -> Unit
+    onMicrophoneSettingsChanged: (Int) -> Unit,
+    onHeySiriDetectionChanged: (Boolean) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -93,6 +102,17 @@ fun MicrophoneSettingsScreen(
                 name = stringResource(R.string.microphone_always_left),
                 selected = selectedMode == 2,
                 onClick = { onMicrophoneSettingsChanged(2) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        StyledList {
+            StyledToggle(
+                label = stringResource(R.string.hey_siri_detection),
+                description = stringResource(R.string.hey_siri_detection_description),
+                checked = heySiriDetectionEnabled,
+                onCheckedChange = onHeySiriDetectionChanged
             )
         }
 

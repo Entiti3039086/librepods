@@ -424,6 +424,7 @@ class AirPodsViewModel(
     fun observeAACP() {
         val identifiersList = listOf(
             ControlCommandIdentifiers.MIC_MODE,
+            ControlCommandIdentifiers.VOICE_TRIGGER,
             ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL,
             ControlCommandIdentifiers.CLICK_HOLD_INTERVAL,
             ControlCommandIdentifiers.LISTENING_MODE_CONFIGS,
